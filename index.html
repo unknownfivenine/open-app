@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#14121f"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><title>OPEN · A space to listen</title></head>
+<body><main>
+<header><a href="./" aria-label="OPEN home">OPEN</a><span id="offline">Checking offline files…</span></header>
+
+<section class="ask">
+<h1><label for="intention">What would you like this time to hold?</label></h1>
+<textarea id="intention" rows="2" maxlength="400" placeholder="A few words, or nothing at all" autocomplete="off"></textarea>
+<fieldset id="picks" class="chips"><legend>Or choose a direction</legend></fieldset>
+<p class="hint">Read on this device to suggest a route. Never saved or sent.</p>
+</section>
+
+<section class="route" aria-label="Your route">
+<h2 id="routeTitle">Holding</h2>
+<p id="because" class="hint"></p>
+<svg id="path" viewBox="0 0 1000 160" role="img" aria-labelledby="routeTitle" preserveAspectRatio="none"></svg>
+<ul id="legend" class="legend"></ul>
+<div class="shape">
+<fieldset id="intensity"><legend>How far to travel</legend>
+<label><input type="radio" name="intensity" value="gentle" checked> Gentle</label>
+<label><input type="radio" name="intensity" value="moderate"> Moderate</label>
+<label><input type="radio" name="intensity" value="full"> Full</label></fieldset>
+<div><label for="duration">Listening time</label><select id="duration"><option value="1800">30 minutes</option><option value="3600" selected>60 minutes</option><option value="5400">90 minutes</option><option value="7200">120 minutes</option></select></div>
+</div>
+<details class="more"><summary>More options</summary>
+<label class="check"><input type="checkbox" id="breathing"> Add a subtle musical swell for the opening</label><p class="hint">Phrasing for the first three minutes. Breathe naturally; no counts or holds.</p>
+<label for="seed">Musical seed</label><input id="seed" type="number" min="0" max="4294967295" value="42"><p class="hint">The same seed gives the same music again.</p>
+</details>
+<p class="hint">The route shapes the music: recorded instruments play each mood. Which instruments, and how they play, are first drafts to tune by ear.</p>
+</section>
+
+<section class="listen" aria-label="Listening">
+<p id="phase">Ready when you are</p>
+<h2 id="headline">Make a little room.</h2>
+<p id="status" role="status">Prepare your sound, then begin.</p>
+<p id="clock">00:00</p>
+<div class="transport"><button id="prepare">Prepare the sound</button><button id="play" class="primary" disabled>Begin listening</button><button id="pause" disabled>Pause</button></div>
+<p id="prepareStatus" class="hint" role="status">Sound is prepared on this device. No account or connection needed after offline setup.</p>
+<div class="secondary"><button id="hold" disabled aria-pressed="false">Stay here</button><button id="home" disabled>Return to Holding</button><button id="soften" disabled aria-pressed="false">Soften</button><button id="gentle" disabled>End gently</button><button id="stop" class="stop" disabled>Stop now</button></div>
+<label class="volume" for="volume">Listening level <input id="volume" type="range" min="0" max="1" step=".01" value=".6"></label>
+<p class="hint">Stay here keeps the music in its current mood until you continue. Return to Holding moves back to the home mood over about a minute and a half and stays there.</p>
+<p class="care">Start at a low headphone volume. Keep a way to hear and contact your care team. Sound resumes by itself after an interruption while you intend to listen; Pause or Stop turns that off.</p>
+</section>
+
+<footer><span>Personal listening, not clinical monitoring.</span><span>Music ending does not mean treatment is complete.</span></footer>
+<details><summary>Playback and privacy notes</summary><p>Recorded instruments (public-domain recordings from Versilian Studios) with a synthesised fallback. No voice, microphone, tracking, cloud generation or stored intentions. Your words are matched against a short word list on this device to suggest a route, and are gone when the page closes. Only how far to travel, listening time, level and the opening swell are remembered on this device. Lock-screen playback and call recovery are experimental until tested on your iPhone. A closed page or an operating-system shutdown cannot recover itself. Headphone disconnects cannot be reliably detected here: check the output route before listening. Browser restrictions may still require a tap to resume.</p><p id="diagnostics">No audio started.</p></details>
+</main><script type="module" src="app.js"></script></body></html>
