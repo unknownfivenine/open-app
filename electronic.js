@@ -1,7 +1,7 @@
 // OPEN's electronic sound: the AMB-1 generative engine (amb/, MPL-2.0) steered by OPEN's session plan.
 // ambSchedule turns a plan into timed settings (pure, testable); Electronic runs them on the audio thread
 // with the same interface as the acoustic Sampler, so the player, Stay here and recovery work unchanged.
-import {MOODS, moodAt} from './compose.js';
+import {MOODS, moodAt, scalePitch} from './compose.js';
 
 // AMB-1 parameter numbers (amb/src/amb.h) and its scale numbers.
 export const P = {pad:0, bells:1, bass:2, pulse:3, density:4, evolve:5, drift:6, hits:7, echo:8, echoTime:9, reverb:10, size:11,
@@ -25,33 +25,71 @@ export const RECIPES = {
 export const LEVEL = {holding:0.427, surrender:0.288, release:0.407, expanse:0.245, communion:0.562, renewal:0.75};
 const SCALE = {gentle:.75, moderate:1, full:1.25};
 
+// In Mixed, the electronic sound sits under the instruments: no bass (the cellos have it), no percussion,
+// fewer bells, a softer pad, and lower overall (MIXED_LEVEL), so the two together match either alone.
+const MIXED = {bass:0, pulse:0, hits:0}, MIXED_SCALE = {bells:.6, pad:.85};
+export const MIXED_LEVEL = .7;
+
 // The engine's settings for a mood at an intensity, on the plan's tonal centre.
-export function settingsFor(mood, intensity = 'moderate', tonic = 62) {
+export function settingsFor(mood, intensity = 'moderate', tonic = 62, mixed = false) {
   const recipe = RECIPES[mood], k = SCALE[intensity];
   if (!recipe) throw new Error(`Unknown mood: ${mood}`);
   if (!k) throw new Error(`Unknown intensity: ${intensity}`);
   const v = {...recipe};
   for (const key of ['density','evolve','motion']) v[key] = Math.round(Math.min(100, Math.max(0, v[key] * k)));
   if (intensity === 'gentle') { v.pulse = 0; v.hits = 0; }
+  if (mixed) { Object.assign(v, MIXED); for (const [key, k2] of Object.entries(MIXED_SCALE)) v[key] = Math.round(v[key] * k2); }
   v.root = ((tonic % 12) + 12) % 12; v.mode = AMB_MODE[MOODS[mood].mode]; v.midi = 0;
   return Object.entries(v).map(([key, value]) => [P[key], value]);
 }
 
+// The notes of one of the plan's chords as an engine pool (bit i: root + i semitones). A bridge's open
+// middle chord is the bare fifth.
+export function chordPool(mood, tonic, chord) {
+  const root = ((tonic % 12) + 12) % 12;
+  const pcs = chord.open ? [tonic, tonic + 7] : [0, 2, 4].map(i => scalePitch(tonic, MOODS[mood].mode, chord.degree + i));
+  return pcs.reduce((pool, pc) => pool | 1 << (((pc - root) % 12) + 12) % 12, 1);
+}
+// Every chord of the plan with its start time and mood.
+function chordsOf(plan) {
+  const out = [];
+  for (const part of plan.parts) {
+    const third = part.seconds / 3;
+    for (const chord of part.chords ?? []) {
+      if (chord.at >= part.seconds) continue;
+      const mood = part.kind === 'bridge' ? (chord.at < third ? part.from : part.to) : part.mood;
+      out.push({at:part.start + chord.at, mood, chord});
+    }
+  }
+  return out;
+}
+
 // Timed settings for a plan from `from` seconds: the mood playing at `from`, then each later mood
-// change, taken at the middle of its bridge with a move to the next chord.
-export function ambSchedule(plan, from = 0) {
-  const at = mood => ({set:settingsFor(mood, plan.intensity, plan.tonic), pool:AMB_POOL[MOODS[mood].mode], gain:LEVEL[mood]});
+// change, taken at the middle of its bridge with a move to the next chord. With `mixed`, the engine also
+// follows the instruments' chords: at every chord change its notes become that chord's notes.
+export function ambSchedule(plan, from = 0, mixed = false) {
+  const level = mixed ? MIXED_LEVEL : 1;
+  const at = mood => ({set:settingsFor(mood, plan.intensity, plan.tonic, mixed), pool:AMB_POOL[MOODS[mood].mode], gain:LEVEL[mood] * level});
   const items = [{at:from, ...at(moodAt(plan, from))}];
   for (const part of plan.parts) {
     if (part.kind !== 'bridge') continue;
     const middle = part.start + part.seconds / 2;
     if (middle > from && middle < plan.seconds) items.push({at:middle, ...at(part.to), next:true});
   }
+  if (mixed) {
+    const chords = chordsOf(plan), current = chords.findLast(c => c.at <= from) ?? chords[0];
+    items[0].pool = chordPool(current.mood, plan.tonic, current.chord);
+    for (const item of items.slice(1)) delete item.pool;   // chords, not whole scales, from here on
+    for (const c of chords) if (c.at > from && c.at < plan.seconds) items.push({at:c.at, pool:chordPool(c.mood, plan.tonic, c.chord), next:true});
+    items.sort((a, b) => a.at - b.at);
+  }
   return items;
 }
 
 export class Electronic {
-  constructor(ctx, destination) { this.ctx = ctx; this.destination = destination; this.marker = ctx.createGain(); this.instruments = ['Electronic garden']; }
+  constructor(ctx, destination, mixed = false) {
+    this.ctx = ctx; this.destination = destination; this.mixed = mixed; this.marker = ctx.createGain(); this.instruments = ['Electronic garden'];
+  }
   async load(plan) {
     this.plan = plan;
     await this.ctx.audioWorklet.addModule('amb/worklet.js');
@@ -68,7 +106,7 @@ export class Electronic {
     this.node.connect(this.destination);
   }
   send(plan, from, extra = {}) {
-    const items = ambSchedule(plan, from).map(item => ({...item, time:this.startAt + item.at}));
+    const items = ambSchedule(plan, from, this.mixed).map(item => ({...item, time:this.startAt + item.at}));
     Object.assign(items[0], extra);
     this.node.port.postMessage({t:'schedule', from:this.startAt + from, items});
   }
@@ -79,4 +117,21 @@ export class Electronic {
   stopAll(at) { this.node?.port.postMessage({t:'stopAt', time:at}); }
   halt() { this.node?.port.postMessage({t:'halt'}); this.startAt = null; }
   dispose() { this.halt(); this.node?.disconnect(); this.node = null; }
+}
+
+// Mixed: the instruments and the electronic garden together, the garden following the instruments' chords.
+// If the garden cannot start, the instruments play alone.
+export class Mixed {
+  constructor(acoustic, electronic) { this.acoustic = acoustic; this.electronic = electronic; this.marker = acoustic.marker; }
+  async load(plan) {
+    await this.acoustic.load(plan);
+    try { await this.electronic.load(plan); this.node = this.electronic.node; } catch { this.electronic = null; }
+    this.instruments = [...this.acoustic.instruments, ...(this.electronic ? ['electronic garden'] : [])];
+  }
+  begin(startAt) { this.acoustic.begin(startAt); this.electronic?.begin(startAt); }
+  topUp() { this.acoustic.topUp(); }
+  async replace(plan, from) { await this.acoustic.replace(plan, from); await this.electronic?.replace(plan, from); }
+  stopAll(at) { this.acoustic.stopAll(at); this.electronic?.stopAll(at); }
+  halt() { this.acoustic.halt(); this.electronic?.halt(); }
+  dispose() { this.acoustic.dispose(); this.electronic?.dispose(); }
 }

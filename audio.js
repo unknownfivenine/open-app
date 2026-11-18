@@ -1,6 +1,6 @@
 import {plan, renderLoop, RATE, arc} from './music.js';
 import {Sampler} from './sampler.js';
-import {Electronic} from './electronic.js';
+import {Electronic, Mixed} from './electronic.js';
 export function silentWav() {
   const bytes = new ArrayBuffer(8044), v = new DataView(bytes);
   const str = (o,s) => [...s].forEach((c,i) => v.setUint8(o+i,c.charCodeAt(0)));
@@ -38,11 +38,16 @@ export class ListeningAudio {
       buffer.copyToChannel(pcm,0); this.buffers.push({buffer,pan:layer.pan});
     }
     // Recorded instruments play the session plan when they can be loaded; the loops above remain the fallback.
-    // Electronic falls back to acoustic, and acoustic to the built-in loops, if it cannot load.
+    // Electronic and Mixed fall back to acoustic, and acoustic to the built-in loops, if they cannot load.
     this.engine?.dispose(); this.engine = null;
     if (session && sound === 'electronic') try {
       const electronic = new Electronic(this.ctx, this.arcGain);
       await electronic.load(session); this.engine = electronic;
+    } catch { this.engine = null; }
+    if (session && sound === 'mixed') try {
+      const manifest = await (await fetch('samples/manifest.json')).json();
+      const mixed = new Mixed(new Sampler(this.ctx, manifest, this.arcGain), new Electronic(this.ctx, this.arcGain, true));
+      await mixed.load(session); this.engine = mixed;
     } catch { this.engine = null; }
     if (session && !this.engine) try {
       const manifest = await (await fetch('samples/manifest.json')).json();

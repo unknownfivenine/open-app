@@ -73,7 +73,7 @@ $('prepare').onclick = async () => {
   try {
     const sound = document.querySelector('input[name=sound]:checked').value;
     await audio.prepare(Number($('seed').value) >>> 0,Number($('duration').value),$('breathing').checked,plan,sound);
-    const missed = sound === 'electronic' && audio.engine && !audio.engine.node ? ' The electronic sound could not start here, so this uses the acoustic one.' : '';
+    const missed = sound !== 'acoustic' && audio.engine && !audio.engine.node ? ' The electronic sound could not start here, so this uses the acoustic one.' : '';
     $('prepareStatus').textContent = audio.engine ? `Ready: ${audio.engine.instruments.join(', ').toLowerCase()}.${missed} Begin when you are comfortable.`
       : 'The recordings could not be loaded, so this session uses the simpler built-in sound. Begin when you are comfortable.';
   } catch (error) { $('prepareStatus').textContent = `Could not prepare sound: ${error.message}`; }
