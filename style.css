@@ -35,11 +35,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 #path .playhead{stroke:var(--ember);stroke-width:2;vector-effect:non-scaling-stroke}
 .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--haze);margin:0;padding:0;list-style:none}
 .legend li::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:7px}
-.shape{display:grid;grid-template-columns:1.4fr 1fr;gap:24px;align-items:end}
-#intensity{display:flex;flex-wrap:wrap;gap:8px}
-#intensity legend{width:100%;float:left}
-#intensity label{margin:0;color:var(--bone);font-size:14px;border:1px solid var(--edge);border-radius:999px;padding:9px 16px;min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer}
-#intensity label:has(:checked){border-color:var(--ember);background:#e8a86b24}
+.shape{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:24px;align-items:end}
+#intensity,.choice{display:flex;flex-wrap:wrap;gap:8px}
+#intensity legend,.choice legend{width:100%;float:left}
+#intensity label,.choice label{margin:0;color:var(--bone);font-size:14px;border:1px solid var(--edge);border-radius:999px;padding:9px 16px;min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer}
+#intensity label:has(:checked),.choice label:has(:checked){border-color:var(--ember);background:#e8a86b24}
 input[type=radio],input[type=checkbox],input[type=range]{accent-color:var(--ember)}
 details{margin-top:22px;font-size:13px;color:var(--haze)}
 summary{cursor:pointer;width:fit-content}

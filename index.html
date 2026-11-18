@@ -20,6 +20,9 @@
 <label><input type="radio" name="intensity" value="gentle" checked> Gentle</label>
 <label><input type="radio" name="intensity" value="moderate"> Moderate</label>
 <label><input type="radio" name="intensity" value="full"> Full</label></fieldset>
+<fieldset id="sound" class="choice"><legend>Sound</legend>
+<label><input type="radio" name="sound" value="acoustic" checked> Acoustic</label>
+<label><input type="radio" name="sound" value="electronic"> Electronic</label></fieldset>
 <div><label for="duration">Listening time</label><select id="duration"><option value="1800">30 minutes</option><option value="3600" selected>60 minutes</option><option value="5400">90 minutes</option><option value="7200">120 minutes</option></select></div>
 </div>
 <details class="more"><summary>More options</summary>
@@ -43,5 +46,5 @@
 </section>
 
 <footer><span>Personal listening, not clinical monitoring.</span><span>Music ending does not mean treatment is complete.</span></footer>
-<details><summary>Playback and privacy notes</summary><p>Recorded instruments (public-domain recordings from Versilian Studios) with a synthesised fallback. No voice, microphone, tracking, cloud generation or stored intentions. Your words are matched against a short word list on this device to suggest a route, and are gone when the page closes. Only how far to travel, listening time, level and the opening swell are remembered on this device. Lock-screen playback and call recovery are experimental until tested on your iPhone. A closed page or an operating-system shutdown cannot recover itself. Headphone disconnects cannot be reliably detected here: check the output route before listening. Browser restrictions may still require a tap to resume.</p><p id="diagnostics">No audio started.</p></details>
+<details><summary>Playback and privacy notes</summary><p>Recorded instruments (public-domain recordings from Versilian Studios) with a synthesised fallback. No voice, microphone, tracking, cloud generation or stored intentions. Your words are matched against a short word list on this device to suggest a route, and are gone when the page closes. Only how far to travel, the sound, listening time, level and the opening swell are remembered on this device. Acoustic uses recordings by Versilian Studios (public domain). Electronic is the AMB-1 generative engine by Charles Vestal (Mozilla Public License 2.0; source in amb/). Lock-screen playback and call recovery are experimental until tested on your iPhone. A closed page or an operating-system shutdown cannot recover itself. Headphone disconnects cannot be reliably detected here: check the output route before listening. Browser restrictions may still require a tap to resume.</p><p id="diagnostics">No audio started.</p></details>
 </main><script type="module" src="app.js"></script></body></html>

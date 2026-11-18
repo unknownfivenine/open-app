@@ -10,3 +10,8 @@ All instrument recordings are by Versilian Studios and released as CC0 (public d
 the Versilian Community Sample Library (github.com/sgossner/VCSL) and the Chamber Orchestra 2
 Community Edition (github.com/sgossner/VSCO-2-CE), trimmed and compressed for the web.
 `samples/manifest.json` lists the source file of every recording.
+
+## Electronic sound
+
+The AMB-1 generative engine by Charles Vestal (github.com/charlesvestal/fm1-amb), unmodified, under the
+Mozilla Public License 2.0. Its source, licence and build notes are in `amb/`.

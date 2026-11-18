@@ -1,5 +1,5 @@
-const CACHE = 'open-browser-v11';
-const FILES = ['./','./index.html','./style.css','./app.js','./audio.js','./music.js','./transport.js','./compose.js','./intention.js','./route.js','./instruments.js','./sampler.js','./samples/manifest.json','./manifest.webmanifest','./icon.svg'];
+const CACHE = 'open-browser-v12';
+const FILES = ['./','./index.html','./style.css','./app.js','./audio.js','./music.js','./transport.js','./compose.js','./intention.js','./route.js','./instruments.js','./sampler.js','./electronic.js','./amb/worklet.js','./amb/amb.wasm','./samples/manifest.json','./manifest.webmanifest','./icon.svg'];
 // The app shell must cache for install to succeed; recordings are cached afterwards, best effort.
 async function recordings(cache) {
   const manifest = await (await fetch('./samples/manifest.json')).json(), urls = [];

@@ -1,5 +1,6 @@
 import {plan, renderLoop, RATE, arc} from './music.js';
 import {Sampler} from './sampler.js';
+import {Electronic} from './electronic.js';
 export function silentWav() {
   const bytes = new ArrayBuffer(8044), v = new DataView(bytes);
   const str = (o,s) => [...s].forEach((c,i) => v.setUint8(o+i,c.charCodeAt(0)));
@@ -13,7 +14,9 @@ export class ListeningAudio {
   init() {
     if (this.ctx) return;
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // 44.1 kHz matches the recordings and the electronic engine; the browser converts for the device.
+    const Context = window.AudioContext || window.webkitAudioContext;
+    try { this.ctx = new Context({sampleRate:44100}); } catch { this.ctx = new Context(); }
     this.arcGain = this.ctx.createGain(); this.arcGain.gain.value = 0;
     this.phraseGain = this.ctx.createGain(); this.phraseGain.gain.value = 1;
     this.level = this.ctx.createGain(); this.level.gain.value = this.volume;
@@ -25,7 +28,7 @@ export class ListeningAudio {
     this.bridge.loop = true; this.bridge.setAttribute('playsinline','');
     this.bridge.addEventListener('playing',() => { if (!this.wanted) this.bridge.pause(); });
   }
-  async prepare(seed, duration, breathing, session = null) {
+  async prepare(seed, duration, breathing, session = null, sound = 'acoustic') {
     this.init(); this.ready = false; this.reset(); this.duration = duration; this.breathing = breathing;
     this.buffers = [];
     for (const layer of plan(seed)) {
@@ -35,19 +38,24 @@ export class ListeningAudio {
       buffer.copyToChannel(pcm,0); this.buffers.push({buffer,pan:layer.pan});
     }
     // Recorded instruments play the session plan when they can be loaded; the loops above remain the fallback.
-    this.sampler?.dispose(); this.sampler = null;
-    if (session) try {
+    // Electronic falls back to acoustic, and acoustic to the built-in loops, if it cannot load.
+    this.engine?.dispose(); this.engine = null;
+    if (session && sound === 'electronic') try {
+      const electronic = new Electronic(this.ctx, this.arcGain);
+      await electronic.load(session); this.engine = electronic;
+    } catch { this.engine = null; }
+    if (session && !this.engine) try {
       const manifest = await (await fetch('samples/manifest.json')).json();
       const sampler = new Sampler(this.ctx, manifest, this.arcGain);
-      await sampler.load(session); this.sampler = sampler;
-    } catch { this.sampler = null; }
+      await sampler.load(session); this.engine = sampler;
+    } catch { this.engine = null; }
     this.ready = true;
   }
-  tick() { if (this.nodes.length) this.sampler?.topUp(); }
+  tick() { if (this.nodes.length) this.engine?.topUp(); }
   startGraph() {
     if (this.nodes.length) return;
     this.startAt = this.ctx.currentTime;
-    if (this.sampler) { this.sampler.begin(this.startAt); this.nodes.push(this.sampler.marker); }
+    if (this.engine) { this.engine.begin(this.startAt); this.nodes.push(this.engine.marker); }
     else for (const {buffer,pan} of this.buffers) {
       const source = this.ctx.createBufferSource(); source.buffer = buffer; source.loop = true;
       const panner = this.ctx.createStereoPanner(); panner.pan.value = pan;
@@ -74,7 +82,7 @@ export class ListeningAudio {
     }
     // Source stop is scheduled by the audio engine, not a hidden-page timer.
     for (const node of this.nodes) if (node instanceof AudioBufferSourceNode) node.stop(this.startAt+this.duration);
-    this.sampler?.stopAll(this.startAt+this.duration);
+    this.engine?.stopAll(this.startAt+this.duration);
   }
   async resume(stillWanted = () => true) {
     if (!this.ready) throw new Error('Prepare the sound first');
@@ -116,11 +124,11 @@ export class ListeningAudio {
     else { const value = p.value; p.cancelScheduledValues(now); p.setValueAtTime(value,now); }
     p.linearRampToValueAtTime(0,this.endAt);
     for (const node of this.nodes) if (node instanceof AudioBufferSourceNode) node.stop(this.endAt);
-    this.sampler?.stopAll(this.endAt);
+    this.engine?.stopAll(this.endAt);
   }
   complete() { return this.nodes.length > 0 && (this.ctx.currentTime >= (this.endAt ?? this.startAt + this.duration)); }
   reset() {
-    this.silence(); this.sampler?.halt();
+    this.silence(); this.engine?.halt();
     for (const node of this.nodes) { try { node.stop?.(); } catch {} node.disconnect(); }
     this.nodes = []; this.endAt = null; this.startAt = null; this.soft = false;
     if (this.ctx) { this.phraseGain.gain.cancelScheduledValues(this.ctx.currentTime); this.phraseGain.gain.value = 1; }

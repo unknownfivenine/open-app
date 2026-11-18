@@ -46,12 +46,12 @@ function render() {
   $('pause').disabled = !active;
   $('stop').disabled = !audio.ready || preparing;
   $('soften').disabled = !active; $('gentle').disabled = !active;
-  const steerable = active && !!audio.sampler && audio.endAt === null && !changing && audio.duration - elapsed > 40;
+  const steerable = active && !!audio.engine && audio.endAt === null && !changing && audio.duration - elapsed > 40;
   $('hold').disabled = !steerable; $('home').disabled = !steerable || (!held && plan?.mode === 'home');
   $('hold').textContent = held ? 'Continue the route' : 'Stay here'; $('hold').setAttribute('aria-pressed', String(!!held));
   $('prepare').disabled = preparing || active;
   const underway = audio.nodes.length > 0 && !finished;
-  for (const id of ['seed','duration','breathing','intention','picks','intensity']) $(id).disabled = preparing || active || underway;
+  for (const id of ['seed','duration','breathing','intention','picks','intensity','sound']) $(id).disabled = preparing || active || underway;
   if (playhead) {
     const x = Math.min(1000, elapsed / audio.duration * 1000);
     playhead.setAttribute('x1', x); playhead.setAttribute('x2', x); playhead.setAttribute('visibility', underway ? 'visible' : 'hidden');
@@ -71,8 +71,10 @@ $('prepare').onclick = async () => {
   transport.stop(); preparing = true; finished = false; render();
   $('prepareStatus').textContent = 'Loading the instruments for this route…';
   try {
-    await audio.prepare(Number($('seed').value) >>> 0,Number($('duration').value),$('breathing').checked,plan);
-    $('prepareStatus').textContent = audio.sampler ? `Ready: ${audio.sampler.instruments.join(', ').toLowerCase()}. Begin when you are comfortable.`
+    const sound = document.querySelector('input[name=sound]:checked').value;
+    await audio.prepare(Number($('seed').value) >>> 0,Number($('duration').value),$('breathing').checked,plan,sound);
+    const missed = sound === 'electronic' && audio.engine && !audio.engine.node ? ' The electronic sound could not start here, so this uses the acoustic one.' : '';
+    $('prepareStatus').textContent = audio.engine ? `Ready: ${audio.engine.instruments.join(', ').toLowerCase()}.${missed} Begin when you are comfortable.`
       : 'The recordings could not be loaded, so this session uses the simpler built-in sound. Begin when you are comfortable.';
   } catch (error) { $('prepareStatus').textContent = `Could not prepare sound: ${error.message}`; }
   finally { preparing = false; render(); }
@@ -88,17 +90,22 @@ for (const pick of QUICK_PICKS) {
 const PREFS = 'open-preferences-v1';
 function savePreferences() {
   try { localStorage.setItem(PREFS, JSON.stringify({intensity:document.querySelector('input[name=intensity]:checked').value,
+    sound:document.querySelector('input[name=sound]:checked').value,
     duration:$('duration').value, volume:$('volume').value, breathing:$('breathing').checked})); } catch {}
 }
 try {
   const saved = JSON.parse(localStorage.getItem(PREFS) ?? '{}');
   const radio = document.querySelector(`input[name=intensity][value="${CSS.escape(String(saved.intensity ?? ''))}"]`);
   if (radio) radio.checked = true;
+  const soundRadio = document.querySelector(`input[name=sound][value="${CSS.escape(String(saved.sound ?? ''))}"]`);
+  if (soundRadio) soundRadio.checked = true;
   if ([...$('duration').options].some(o => o.value === saved.duration)) $('duration').value = saved.duration;
   if (Number(saved.volume) >= 0 && Number(saved.volume) <= 1) { $('volume').value = saved.volume; audio.volume = Number(saved.volume); }
   if (typeof saved.breathing === 'boolean') $('breathing').checked = saved.breathing;
 } catch {}
-for (const id of ['intensity','duration','volume','breathing']) $(id).addEventListener('change', savePreferences);
+for (const id of ['intensity','duration','volume','breathing','sound']) $(id).addEventListener('change', savePreferences);
+// A different sound needs preparing again.
+$('sound').addEventListener('change', () => { if (audio.ready && !audio.nodes.length) { audio.ready = false; $('prepareStatus').textContent = 'The sound changed. Prepare the sound again.'; render(); } });
 $('intention').oninput = drawRoute;
 // A new piece each visit; the seed stays visible under More options so a session can be repeated.
 try { $('seed').value = crypto.getRandomValues(new Uint32Array(1))[0] % 100000; } catch {}
@@ -113,7 +120,7 @@ async function steer(mode) {
   if (!next) { $('status').textContent = 'Too little time is left to change the route.'; return; }
   changing = true; render();
   try {
-    await audio.sampler.replace(next, at); plan = next;
+    await audio.engine.replace(next, at); plan = next;
     held = mode === 'hold' ? route : null;
     const here = title(moodAt(plan, at));
     $('because').textContent = mode === 'hold' ? `Staying in ${here} until you continue.`
